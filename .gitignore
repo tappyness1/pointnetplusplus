@@ -1,0 +1,8 @@
+__pycache__
+flowers-102
+FashionMNIST
+VOCdevkit
+model_weights.pt
+outputs
+multirun
+model_weights/*.pt
