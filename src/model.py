@@ -184,7 +184,8 @@ if __name__ == "__main__":
     # summary(model, (1000,3)) # not while there's no parameters!
     print ()
     # here we will do a model.forward and then get the classes using log_softmax. The loss function given was NLLLoss
-    out_pos, logits = model.forward(X)
+    out_pos, logits = model(X)
+    print (logits)
     log_softmax = nn.LogSoftmax(dim = 2)
     out_classes = log_softmax(logits).argmax(dim = 2)
     print (out_pos.shape, logits.shape, out_classes.shape)
