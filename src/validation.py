@@ -61,7 +61,7 @@ def validation_classifier(model, val_set, cfg, get_metrics = False):
 
         cr = classification_report(gt, preds, labels = np.arange(0,cfg['train']['num_classes'],1), output_dict = True)
         print (f"Classification Report: \n{cr}")
-        cr = cr.transpose()
+        cr = pd.DataFrame(cr).transpose()
         cr.to_csv("val_results/classifier_classification_report.csv", header=False, index=False)
 
     print (f"Validation Loss: {sum(losses)/len(losses)}")
@@ -118,7 +118,7 @@ def validation_segmentation(model, val_set, cfg, get_metrics = False):
 
         cr = classification_report(gt, preds, labels = np.arange(0,cfg['train']['num_classes'],1), output_dict = True)
         print (f"Classification Report: \n{cr}")
-        cr = cr.transpose()
+        cr = pd.DataFrame(cr).transpose()
         cr.to_csv("val_results/segmentation_classification_report.csv", header=False, index=True)
 
     print (f"Validation Loss: {sum(losses)/len(losses)}")
