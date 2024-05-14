@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.pointnet import PointNet
+from src.model.pointnet import PointNet
 from torch.nn import ReLU
 import torch.nn as nn
 import torch
@@ -115,9 +115,9 @@ class PointFeaturePropagation(nn.Module):
 
         return out
 
-class PointNetPlusPlus(nn.Module):
-    def __init__(self, num_classes:int, network_type:str= "Segmentation") -> None:
-        super(PointNetPlusPlus, self).__init__()
+class PNPPSegmentation(nn.Module):
+    def __init__(self, num_classes:int) -> None:
+        super(PNPPSegmentation, self).__init__()
         
         self.K = num_classes # in the paper it says K is num classes, but they could be talking nonsense again
 
@@ -164,6 +164,38 @@ class PointNetPlusPlus(nn.Module):
         # out = torch.cat((out_pos, out), dim = 2)
         
         return out_pos, out_features
+    
+class PNPPClassifier(nn.Module):
+    def __init__(self, num_classes:int) -> None:
+        super(PNPPClassifier, self).__init__()
+        
+        self.K = num_classes # in the paper it says K is num classes, but they could be talking nonsense again
+
+        # radius to be set to increase 2x at each successive set
+        self.pn_abstraction_set_1 = PNAbstractionSet(K = 512, radius = 0.2, k_classes = self.K, in_channels = 3, layers = [64, 64, 128])
+        self.pn_abstraction_set_2 = PNAbstractionSet(K = 128, radius = 0.4, k_classes = self.K, in_channels = 128+3, layers = [128, 128, 256])
+        # in the paper it says SA([256,512,1024]). I take it to mean just another pointnet layer
+        self.pointnet = PointNet(256+3, [256, 512, 1024])
+
+        self.dropout = nn.Dropout(p = 0.5)
+        self.linear_1 = nn.Conv1d(1024, 512, kernel_size = 1)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.linear_2 = nn.Conv1d(512, 256, kernel_size = 1)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.linear_3 = nn.Conv1d(256, num_classes, kernel_size = 1)
+        self.relu = ReLU()
+
+    def forward(self, input):
+        out = self.pn_abstraction_set_1(input) # end up with B x (3+64) x 1024, 
+        out = self.pn_abstraction_set_2(out) # end up with B x (3 + 128) x 256
+        out = self.pointnet(out.unsqueeze(1)).permute(0,2,1)
+
+        out = self.dropout(self.relu(self.bn1(self.linear_1(out))))
+        out = self.dropout(self.relu(self.bn2(self.linear_2(out))))
+        out = self.linear_3(out) # logits
+        out = out.squeeze(-1)
+        
+        return out
 
 if __name__ == "__main__":
 
@@ -178,14 +210,26 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     X = torch.tensor(X).to(device)
 
-    model = PointNetPlusPlus(num_classes=10, network_type = "Segmentation")
+    # model = PNPPSegmentation(num_classes=10)
+    # model = model.to(device)
+    
+    # # summary(model, (1000,3)) # not while there's no parameters!
+    # print ()
+    # # here we will do a model.forward and then get the classes using log_softmax. The loss function given was NLLLoss
+    # out_pos, logits = model(X)
+    # print (logits)
+    # log_softmax = nn.LogSoftmax(dim = 2)
+    # out_classes = log_softmax(logits).argmax(dim = 2)
+    # print (out_pos.shape, logits.shape, out_classes.shape) 
+
+    model = PNPPClassifier(num_classes=10)
     model = model.to(device)
     
     # summary(model, (1000,3)) # not while there's no parameters!
     print ()
     # here we will do a model.forward and then get the classes using log_softmax. The loss function given was NLLLoss
-    out_pos, logits = model(X)
+    logits = model(X)
+    print (logits.shape)
+    log_softmax = nn.LogSoftmax(dim = 1)
+    out_classes = log_softmax(logits).argmax(dim = 1)
     print (logits)
-    log_softmax = nn.LogSoftmax(dim = 2)
-    out_classes = log_softmax(logits).argmax(dim = 2)
-    print (out_pos.shape, logits.shape, out_classes.shape)

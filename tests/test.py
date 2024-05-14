@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from src.model import ViT
+from src.model.model import PointNetPlusPlus
 
 def test_architecture():
     out_1 = np.array([[-0.5027,  0.2541, -0.4609,  0.1037, -0.3131, -0.0655,  0.4278, -0.0839],

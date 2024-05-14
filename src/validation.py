@@ -13,7 +13,7 @@ def get_accuracy(preds, ground_truth):
     
     return (preds.flatten()==ground_truth.flatten()).float().mean()
 
-def validation(model, val_set, cfg, get_metrics = False):
+def validation_classifier(model, val_set, cfg, get_metrics = False):
     """Simple validation workflow. Current implementation is for F1 score
 
     Args:
@@ -39,11 +39,11 @@ def validation(model, val_set, cfg, get_metrics = False):
 
     with tqdm(val_dataloader) as tepoch:
 
-        for imgs, labels in tepoch:
+        for point_clouds, labels in tepoch:
             
             with torch.no_grad():
-                out = model(imgs.to(device))
-            loss = loss_function(out, labels.unsqueeze(1).to(device)) 
+                out = model(point_clouds.to(device))
+            loss = loss_function(out, labels.to(device)) 
             tepoch.set_postfix(loss=loss.item())  
             losses.append(loss.item())
             if get_metrics:
@@ -57,10 +57,11 @@ def validation(model, val_set, cfg, get_metrics = False):
         cm = process_confusion_matrix(preds, gt, num_classes = cfg['train']['num_classes'])
         cm = pd.DataFrame(cm)
         print (f"Confusion Matrix: \n{cm}")
-        cm.to_csv("val_results/confusion_matrix.csv", header=False, index=False)
+        cm.to_csv("val_results/classifier_confusion_matrix.csv", header=False, index=False)
 
         cr = classification_report(gt, preds, labels = np.arange(0,cfg['train']['num_classes'],1))
         print (f"Classification Report: \n{cr}")
+        cr.to_csv("val_results/classifier_classification_report.csv", header=False, index=False)
 
     print (f"Validation Loss: {sum(losses)/len(losses)}")
 
@@ -92,10 +93,10 @@ def validation_segmentation(model, val_set, cfg, get_metrics = False):
 
     with tqdm(val_dataloader) as tepoch:
 
-        for imgs, labels in tepoch:
+        for point_clouds, labels in tepoch:
             
             with torch.no_grad():
-                out_pos, out = model(imgs.to(device))
+                out_pos, out = model(point_clouds.to(device))
             loss = loss_function(out.permute(0,2,1), labels.to(torch.long).to(device)) 
             tepoch.set_postfix(loss=loss.item())  
             losses.append(loss.item())
@@ -112,10 +113,11 @@ def validation_segmentation(model, val_set, cfg, get_metrics = False):
         cm = process_confusion_matrix(preds, gt, num_classes = cfg['train']['num_classes'])
         cm = pd.DataFrame(cm)
         print (f"Confusion Matrix: \n{cm}")
-        cm.to_csv("val_results/confusion_matrix.csv", header=False, index=False)
+        cm.to_csv("val_results/segmentation_confusion_matrix.csv", header=False, index=False)
 
         cr = classification_report(gt, preds, labels = np.arange(0,cfg['train']['num_classes'],1))
         print (f"Classification Report: \n{cr}")
+        cr.to_csv("val_results/segmentation_classification_report.csv", header=False, index=False)
 
     print (f"Validation Loss: {sum(losses)/len(losses)}")
 
